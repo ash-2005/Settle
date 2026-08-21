@@ -1,25 +1,25 @@
 # Progress
 
-Running log of what actually landed. Newest first.
+Running log. Newest first.
 
-Author on GitHub: **Ashmit** (`ashmitg25@gmail.com`). Do not add Cursor (or any agent) as author or co-author.
+Author on GitHub: **Ashmit** (`ashmitg25@gmail.com`). No Cursor co-author.
+
+---
+
+## Local V1 — 2026-08-21
+
+Runnable Docker stack. Dinner split verified against live API:
+
+- Ashmit paid ₹1200, equal with Rahul → shares ₹600 / ₹600
+- Home: Ashmit owed ₹600, Rahul owes ₹600
+- Settlement plan: Rahul → Ashmit ₹600
+
+Unit tests: 4/4 pass (`Money`, `SplitCalculator`, `SettlementPlanner`).
 
 ---
 
 ## S01 — 2026-08-21
 
-**What:** Project started. Human README, gitignore, this log, commit calendar, empty `backend/` and `frontend/` folders.
+Project started. Human README, gitignore, this log, commit calendar, empty folders.
 
-**Files:**
-- `README.md`
-- `.gitignore`
-- `docs/PROGRESS.md`
-- `docs/COMMIT_PLAN.md`
-- `backend/.gitkeep`
-- `frontend/.gitkeep`
-
-**Tests:** none (no code yet). `git status` used to confirm the slice.
-
-**GitHub:** public repo created under `ash-2005`.
-
-**Next:** S02 — `docs/ARCHITECTURE.md` and `docs/DECISIONS.md`.
+**GitHub:** https://github.com/ash-2005/Settle

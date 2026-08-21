@@ -1,60 +1,85 @@
 # Settle
 
-A shared-expense app I'm building for my 3rd-year B.Tech CSE project.
+Shared expenses for groups of people who actually want to know **why** they owe money, then settle with a small number of transfers — not a mystery running total.
 
-The problem is not "people can't split a bill." The problem is everything around it: who paid what, why you suddenly owe ₹1,240, how many UPI transfers it takes to close a trip, and whether that screenshot actually means the debt is gone.
+This is a 3rd-year B.Tech CSE project: Java does every rupee of arithmetic. The UI stays simple.
 
-Settle is meant to make three things feel obvious:
+## Problem
 
-1. Add an expense in a few seconds.
-2. Tap a balance and see exactly which expenses created it.
-3. Settle up from net balances, with as little back-and-forth as needed — without pretending the math is magic.
+Splitting a trip or a flat usually fails after the first bill:
 
-This is **not** a Splitwise clone with extra screens. Groups exist as a shortcut. You can also split with people who are not in a group, and with people who don't have a Settle account yet.
+- Adding an expense takes too long
+- Nobody can explain a balance without a screenshot thread
+- Everyone pays everyone, instead of netting first
+- Friends who are not “in the app yet” get left out of the math
 
-## What it does (when it's built)
+## Solution
 
-- Fast add: amount, description, who paid, who shared, equal split by default
-- Multiple people can pay the same bill
-- Equal / exact / percentage / shares splits
-- Pending people (phone number now, account later — history stays attached)
-- Balances derived from expenses, not a hidden "A owes B" table
-- An optimized settlement plan from net balances
-- Activity that actually explains edits and payments
+1. Add an expense in a few fields (amount, what, who paid, who shared, equal split).
+2. Open a balance and see the expenses that created it.
+3. Settle from **net balances**. Settle computes an **optimized settlement plan that reduces unnecessary transfers**. It does **not** claim the mathematically minimum number of payments (that problem is NP-hard).
 
-Later: approval/challenges, UPI/QR, payment proofs, receipts, optional AI for parsing a bill — AI never decides who owes whom.
+People are first-class. Groups are optional. Someone without an account can still be on an expense (phone / invite); when they join, history stays on the same person record.
 
-## What it does **not** claim
+## What works today
 
-Settle computes an **optimized settlement plan that reduces unnecessary transfers using net balances**.
+- Phone + OTP login (local code **123456**, no SMS)
+- Add people by phone (pending until they register)
+- Groups, members, leave / remove
+- Group and individual expenses
+- Multiple payers (API); equal split in the UI
+- Exact / percentage / shares splits (API + unit tests)
+- Derived balances (not a stored “A owes B” table)
+- Greedy two-heap settlement plan
+- Activity feed
+- Soft-delete expenses
+- Docker Compose for Postgres + API + web
 
-It does **not** promise "the minimum number of payments." That problem is NP-hard. V1 uses a greedy two-heap netting algorithm. A slower exact optimizer for small groups is optional later.
-
-Cross-settlement (A pays C instead of A→B and B→C) is in the architecture, **off by default**, and only if a group owner turns it on. Not in the first weeks of code.
+Not in this build (on purpose): UPI/QR, payment-proof OCR, AI bill parsing, dispute workflows, recurring expenses. Architecture leaves room; AI will never own the money path.
 
 ## Stack
 
-- Frontend: Next.js, TypeScript, Tailwind
-- Backend: Java 21, Spring Boot
-- Database: PostgreSQL
-- Run locally with Docker Compose when that slice lands
+- Next.js 15, TypeScript, Tailwind
+- Java 21, Spring Boot 3.3
+- PostgreSQL 16, Flyway
+- Docker Compose
 
-One app. No microservices.
+## Run
 
-## Current status
+Docker Desktop must be running.
 
-**Slice S01 — repo only.** There is no running app yet. No login, no expenses, no Docker. This commit is the README, ignore rules, and a build log so the project can grow in small pieces.
+```powershell
+docker compose up --build
+```
 
-Next: architecture and decision docs (`S02`).
+- App: http://localhost:3000
+- API: http://localhost:8080/api/health
 
-## How we are building this
+Sign in with any 10-digit Indian number. OTP is `123456`.
 
-Small slices. Each slice is tested (when there is something to test), committed, and pushed. See [docs/PROGRESS.md](docs/PROGRESS.md) for what actually landed and [docs/COMMIT_PLAN.md](docs/COMMIT_PLAN.md) for the planned order.
+Use two browsers (or a phone + laptop) with two numbers to demo a real split.
 
-## Local setup
+Stop: `docker compose down`  
+Wipe DB: `docker compose down -v`
 
-Nothing to run yet. After `S05` you will start Postgres; after `S09` the API and web app should come up together. Instructions will live here when they are real.
+More: [docs/setup/SETUP.md](docs/setup/SETUP.md) and [docs/LAUNCH.md](docs/LAUNCH.md) (sharing with friends).
+
+## Tests
+
+```powershell
+docker run --rm -v "${PWD}/backend:/app" -w /app maven:3.9.9-eclipse-temurin-21 mvn -B test
+```
+
+Covers money rounding, split math, and the settlement planner.
+
+## Environment
+
+See [.env.example](.env.example). Do not commit `.env`. Local JWT secret is a dummy string for Docker.
+
+## Architecture
+
+[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) · [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)
 
 ## License
 
-Personal / academic project for now. I'll pick a license when this is worth cloning.
+Academic / personal project.
