@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: settle-api
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/settle}
+    username: ${SPRING_DATASOURCE_USERNAME:settle}
+    password: ${SPRING_DATASOURCE_PASSWORD:settle}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+
+server:
+  port: 8080
+
+settle:
+  jwt-secret: ${JWT_SECRET:local-dev-only-change-me-32chars!!}
+  otp: ${SETTLE_OTP:123456}
+  cors-origins: ${CORS_ORIGINS:http://localhost:3000}
+
+logging:
+  pattern:
+    console: "%d{ISO8601} %-5level %logger{36} - %msg%n"
