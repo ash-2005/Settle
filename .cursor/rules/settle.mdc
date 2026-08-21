@@ -1,0 +1,16 @@
+---
+description: Settle project — always read CONTEXT; one slice; Ashmit-only commits
+alwaysApply: true
+---
+
+# Settle
+
+Read `docs/CONTEXT.md` before coding or git.
+
+- One GitHub slice unless Ashmit asked to run a local testable V1.
+- Never `git add .` — only paths in `docs/SLICE_FILES.md` for the current slice.
+- GitHub author must be Ashmit `<ashmitg25@gmail.com>`. Strip `Co-authored-by: Cursor` before push using `git commit-tree` (see CONTEXT.md). Do not change git config. Do not backdate.
+- Product copy: optimized settlement plan from net balances; never “minimizes number of payments.”
+- Cross-settlement: supported in architecture, default OFF, engine later.
+- Expenses FK to `people`, not `users`. Money is BigDecimal / NUMERIC, never float.
+- Do not invent features the spec postponed (UPI, OCR, AI write-path).

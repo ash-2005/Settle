@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: settle
+      POSTGRES_USER: settle
+      POSTGRES_PASSWORD: settle
+    ports:
+      - "5432:5432"
+    volumes:
+      - settle_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U settle"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/settle
+      SPRING_DATASOURCE_USERNAME: settle
+      SPRING_DATASOURCE_PASSWORD: settle
+      JWT_SECRET: local-dev-only-change-me-32chars!!
+      SETTLE_OTP: "123456"
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  settle_pg:
