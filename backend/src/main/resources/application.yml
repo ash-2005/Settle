@@ -23,6 +23,8 @@ settle:
   jwt-secret: ${JWT_SECRET:local-dev-only-change-me-32chars!!}
   otp: ${SETTLE_OTP:123456}
   cors-origins: ${CORS_ORIGINS:http://localhost:3000}
+  ai:
+    gemini-key: ${GEMINI_API_KEY:}
 
 logging:
   pattern:

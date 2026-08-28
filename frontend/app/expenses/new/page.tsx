@@ -23,6 +23,9 @@ function NewExpenseForm() {
     const [error, setError] = useState("");
   const [phone, setPhone] = useState("");
   const [extraPeople, setExtraPeople] = useState<Person[]>([]);
+  const [aiText, setAiText] = useState("");
+  const [aiNote, setAiNote] = useState("");
+  const [listening, setListening] = useState(false);
 
   useEffect(() => {
     api("/api/me").then((u) => {
@@ -61,6 +64,50 @@ function NewExpenseForm() {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
+  async function fillFromAi() {
+    setError("");
+    try {
+      const draft = await api("/api/ai/expense-draft", {
+        method: "POST",
+        body: JSON.stringify({ text: aiText, groupId: groupId || null }),
+      });
+      if (draft.amount) setAmount(draft.amount);
+      if (draft.description) setDescription(draft.description);
+      if (draft.payerId) setPayerId(draft.payerId);
+      if (Array.isArray(draft.participantIds) && draft.participantIds.length) setSelected(draft.participantIds);
+      setAiNote(draft.note || "Review the fields, then tap Add expense.");
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  function listen() {
+    const Speech = (window as unknown as { webkitSpeechRecognition?: new () => SpeechRec }).webkitSpeechRecognition
+      || (window as unknown as { SpeechRecognition?: new () => SpeechRec }).SpeechRecognition;
+    if (!Speech) {
+      setError("Voice works in Chrome / Edge on this phone or PC.");
+      return;
+    }
+    const rec = new Speech();
+    rec.lang = "en-IN";
+    rec.onresult = (ev: { results: { 0: { 0: { transcript: string } } } }) => {
+      setAiText(ev.results[0][0].transcript);
+      setListening(false);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    setListening(true);
+    rec.start();
+  }
+
+  type SpeechRec = {
+    lang: string;
+    start: () => void;
+    onresult: ((ev: { results: { 0: { 0: { transcript: string } } } }) => void) | null;
+    onerror: (() => void) | null;
+    onend: (() => void) | null;
+  };
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -85,6 +132,19 @@ function NewExpenseForm() {
   return (
     <Shell>
       <h1 className="text-2xl font-semibold">Add expense</h1>
+      <div className="mt-4 space-y-2 rounded-2xl bg-white p-4">
+        <p className="text-sm font-medium">Type or speak — then review</p>
+        <textarea className="w-full rounded-xl border px-3 py-2 text-sm" rows={3} placeholder='I paid 1850 for groceries split between me and Rahul' value={aiText} onChange={(e) => setAiText(e.target.value)} />
+        <div className="flex gap-2">
+          <button type="button" onClick={listen} className="flex-1 rounded-xl bg-zinc-100 py-2 text-sm">
+            {listening ? "Listening…" : "Speak"}
+          </button>
+          <button type="button" onClick={fillFromAi} className="flex-1 rounded-xl bg-zinc-900 py-2 text-sm text-white">
+            Fill form
+          </button>
+        </div>
+        {aiNote && <p className="text-xs text-zinc-500">{aiNote}</p>}
+      </div>
       <form onSubmit={submit} className="mt-4 space-y-3">
         <select className="w-full rounded-xl border bg-white px-3 py-3" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
           <option value="">No group — just these people</option>

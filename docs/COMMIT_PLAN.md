@@ -11,14 +11,13 @@ Commits must show **Ashmit** as author and committer. No `Co-authored-by: Cursor
 ## Week 1 — paper + skeleton (M0 / M1)
 
 - [x] **S01** README, `.gitignore`, folder placeholders, PROGRESS.md, COMMIT_PLAN.md. Create public GitHub repo. Test: `git status`.
-- [ ] **S02** `docs/ARCHITECTURE.md` + `docs/DECISIONS.md` (settlement wording, cross-settlement supported/default OFF/implement later, edit notification audience, deletion = affected participants only).
-- [ ] **S03** `docs/DATABASE.md`
-- [ ] **S04** `docs/API.md` + `docs/DEVELOPMENT.md`
-- [ ] **S05** Docker Compose Postgres 16 only + `.env.example`. Test: `docker compose up -d postgres` and `pg_isready`.
-- [ ] **S06** Spring Boot 21 skeleton, `com.settle`, `/api/health`. Test: health 200.
-- [ ] **S07** `Money` + rounding helper + unit tests. Test: `mvn test`.
-- [ ] **S08** Next.js + Tailwind shell, bottom nav, placeholder home.
-- [ ] **S09** Wire frontend health check to backend; compose for api+web. Week 1 done. No auth yet.
+- [x] **S02** `docs/ARCHITECTURE.md` + `docs/DECISIONS.md` (landed in docs commit).
+- [x] **S03** `docs/DATABASE.md` (landed in docs commit).
+- [x] **S04** `docs/API.md` + `docs/DEVELOPMENT.md` (landed in docs commit).
+- [x] **S05–S09** Docker + Spring + Next (landed in foundation commits).
+- [x] **S10–S24** Auth through settlement (landed in API + frontend commits).
+- [x] **S25** AI expense draft: type/speak → review → save (not auto-post).
+- [ ] **S26** PWA: manifest + home-screen install for phone demo.
 
 ## Week 2 — identity and groups (M2–M4)
 

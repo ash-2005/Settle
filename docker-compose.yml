@@ -26,6 +26,7 @@ services:
       JWT_SECRET: local-dev-only-change-me-32chars!!
       SETTLE_OTP: "123456"
       CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
