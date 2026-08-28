@@ -1,59 +1,61 @@
 # How to run Settle and how to share it
 
-## On this Windows PC (you)
+## Launch on this Windows PC (do this)
 
-You need **Docker Desktop** running.
-
-In the project folder (`ai repo`):
+1. Start **Docker Desktop** and wait until it says running.
+2. Open PowerShell in the project folder:
 
 ```powershell
+cd "C:\Users\Ashmit\Desktop\ai repo"
 docker compose up --build
 ```
 
-Then:
+3. Browser: **http://localhost:3000**
+4. Phone number (10 digits). Code: **123456** (local demo — not a real SMS).
+5. Create a group, add a second phone, add an expense.
 
-- App: http://localhost:3000
-- API health: http://localhost:8080/api/health
+The stack is three containers: Postgres, API `:8080`, website `:3000`.
 
-Sign in with your phone number. OTP in local Docker is always **123456**.
+Stop: `docker compose down`
 
-Stop:
+---
 
-```powershell
-docker compose down
-```
+## Phone “app” (no Play Store APK on this PC)
 
-Database data is kept in a Docker volume. Wipe it with `docker compose down -v` if you want a clean slate.
+This machine has **no Android SDK**, so a signed `.apk` cannot be compiled here.
 
-If compose files are not in the repo yet (GitHub still on early slices), this machine may still have them locally — run the same command from the project folder.
+On your **Android phone (same Wi‑Fi)**:
 
-### Without Docker for the website only
+1. Find the PC’s IPv4 (`ipconfig`).
+2. Rebuild web with that API URL, or for a quick solo demo use the PC browser.
+3. In Chrome: site menu → **Add to Home screen**. That is a PWA (looks like an app, OTP login still works).
 
-If Postgres + API are already up:
+A real Play Store APK needs Android Studio installed, then wrapping this web app (Capacitor/TWA). That is a later packaging step, not a second product.
 
-```powershell
-cd frontend
-npm install
-npm run dev
-```
+---
 
-Website: http://localhost:3000  
-API must be at http://localhost:8080
+## OTP
+
+Local Docker always accepts **123456**. Logs also print the code. Real SMS (MSG91/Twilio) is a provider swap behind the same `/api/auth/otp/*` routes when you have an API key.
+
+---
+
+## AI
+
+On **Add expense**: type or **Speak**, then **Fill form**. You still tap **Add expense**.
+
+- Without `GEMINI_API_KEY`: the Java parser fills the form.
+- With a Gemini key in `.env` / Compose: Gemini can suggest the draft. It still does not save until you confirm.
 
 ---
 
 ## Sharing with friends
 
-`localhost` is only your laptop. Friends on their phones will not see it unless you do one of these.
+`localhost` is only this laptop. Friends on their phones will not see it unless you do one of these.
 
-### 1. Friend also has Docker (best for a “real project”)
+### 1. Friend also has Docker
 
-Send them the GitHub link: https://github.com/ash-2005/Settle
-
-They install Docker, clone, `docker compose up --build`.  
-This only works once the app slices are on GitHub, not when GitHub is still README-only.
-
-Until then, they cannot “just clone.” Use option 2 or 3, or sit together on your PC.
+Send https://github.com/ash-2005/Settle — they run `docker compose up --build`.
 
 ### 2. Same Wi‑Fi (hostel / home)
 

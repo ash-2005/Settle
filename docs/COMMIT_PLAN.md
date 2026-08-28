@@ -17,7 +17,7 @@ Commits must show **Ashmit** as author and committer. No `Co-authored-by: Cursor
 - [x] **S05–S09** Docker + Spring + Next (landed in foundation commits).
 - [x] **S10–S24** Auth through settlement (landed in API + frontend commits).
 - [x] **S25** AI expense draft: type/speak → review → save (not auto-post).
-- [ ] **S26** PWA: manifest + home-screen install for phone demo.
+- [x] **S26** PWA: manifest + home-screen install for phone demo.
 
 ## Week 2 — identity and groups (M2–M4)
 
