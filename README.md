@@ -33,9 +33,11 @@ People are first-class. Groups are optional. Someone without an account can stil
 - Greedy two-heap settlement plan
 - Activity feed
 - Soft-delete expenses
+- AI expense draft (type/speak → review → save; optional Gemini)
+- PWA install (Add to Home screen on Android)
 - Docker Compose for Postgres + API + web
 
-Not in this build (on purpose): UPI/QR, payment-proof OCR, AI bill parsing, dispute workflows, recurring expenses. Architecture leaves room; AI will never own the money path.
+Not in this build (on purpose): UPI/QR, payment-proof OCR, real SMS OTP, dispute workflows, recurring expenses, Play Store APK. Architecture leaves room; AI never owns the money path.
 
 ## Stack
 
@@ -70,7 +72,11 @@ More: [docs/setup/SETUP.md](docs/setup/SETUP.md) and [docs/LAUNCH.md](docs/LAUNC
 docker run --rm -v "${PWD}/backend:/app" -w /app maven:3.9.9-eclipse-temurin-21 mvn -B test
 ```
 
-Covers money rounding, split math, and the settlement planner.
+Covers money rounding, split math, settlement planner, and AI expense draft parser.
+
+## Codex / next agent
+
+Full handoff for **website first, then app**: [docs/CODEX_HANDOFF.md](docs/CODEX_HANDOFF.md)
 
 ## Environment
 

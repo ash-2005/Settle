@@ -14,7 +14,15 @@ AI expense draft: `/api/ai/expense-draft`, Java parser (+ optional Gemini), spea
 
 ---
 
-## S26 — (pending)
+## S26 — 2026-08-26
+
+PWA manifest, service worker, home-screen install. LAUNCH.md updated (run + share; no APK on this PC).
+
+---
+
+## S27 — 2026-09-18
+
+Codex handoff doc, PROJECT_STATUS + README sync (AI draft + PWA). V1 complete on GitHub.
 
 ## Local V1 — 2026-08-21
 

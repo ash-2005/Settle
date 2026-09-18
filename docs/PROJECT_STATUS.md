@@ -1,8 +1,6 @@
 # Project status
 
-**Runnable locally** with Docker Compose: auth, people, groups, expenses, balances, settlement plan, activity, soft-delete.
-
-**GitHub** may lag local files if commits are landed day-by-day. This file describes **what the code in this workspace does**.
+**Last updated:** 2026-09-18. Runnable locally with Docker Compose. **On GitHub:** full V1 + AI draft + PWA.
 
 ## Completed
 
@@ -16,31 +14,35 @@
 - Greedy two-heap settlement plan (honest copy: not min-payment-count)
 - Activity events with audience rows
 - Soft-delete by creator
-- Next.js UI for the main loop
-- Flyway schema, Docker Compose, unit tests for money/splits/settlement
+- Next.js UI: login, home, groups, add expense, balances, settle-up, activity, profile
+- **AI expense draft:** `/api/ai/expense-draft` — Java parser; optional Gemini; user must confirm
+- **PWA:** manifest + service worker — install via Chrome “Add to Home screen”
+- Flyway schema, Docker Compose, unit tests
 
 ## Architecture
 
 Modular monolith. Browser → Next.js → Spring Boot → PostgreSQL. No LLM on balances.
 
+## Launch path
+
+1. **Website first** — deploy Docker stack to a public host with HTTPS
+2. **PWA** — already works once site is public
+3. **APK later** — Capacitor/TWA + Android Studio; must point at public API, not localhost
+
+See [CODEX_HANDOFF.md](CODEX_HANDOFF.md) and [LAUNCH.md](LAUNCH.md).
+
 ## Tests
 
-Unit tests in `backend/src/test`. Run via Maven in Docker (no global `mvn` on the Windows machine).
+Unit tests in `backend/src/test`. Run via Maven in Docker when Docker Desktop is up.
 
-## Known issues / limitations
+## Known limitations
 
-- UI add-expense is **equal split, one payer**. Other split methods and multi-payer are implemented in the API.
-- OTP is a local constant, not SMS
-- JWT in `localStorage` (fine for a student demo, not a bank)
-- No UPI, OCR, AI parse, disputes, or recurring generation
-- Cross-settlement flag exists on groups, engine not implemented (default OFF)
-- Owner cannot leave without a future ownership-transfer feature
-- Invite accept does not merge two person rows; register-with-same-phone is the merge
-
-## Deployment
-
-Docker Compose is the supported path. Production would replace OTP, JWT secret, and CORS origins. Not deployed to a public host in this repo.
+- UI add-expense: equal split, one payer (API supports more)
+- OTP is local constant, not SMS
+- No Play Store APK in repo
+- No UPI, disputes, recurring, cross-settlement engine (flag OFF)
+- Not deployed to production yet
 
 ## Future
 
-Disputes, notifications, recurring, UPI/QR + proof, receipt OCR, optional exact settlement optimizer for tiny groups, cross-settlement engine when the owner enables it.
+Public deploy, real SMS, Capacitor APK, UPI/QR, disputes, recurring, cross-settlement engine.

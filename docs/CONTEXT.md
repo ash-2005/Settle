@@ -12,7 +12,7 @@ Never leave Cursor / `cursoragent@cursor.com` as author or `Co-authored-by`.
 ## Straight answers
 
 **Is the whole app already built?**  
-At S01, no — GitHub only had a README and empty folders. A later session may have added a **local testable V1** on this machine (Docker: Postgres + Spring Boot + Next.js). GitHub is intentionally behind so commits can land **one slice per day**. If `git status` is noisy, that is expected. Do not panic-commit everything.
+**Yes — V1 is on GitHub and runnable locally.** Docker: Postgres + Spring Boot + Next.js. Login, groups, expenses, balances, settlement, activity, AI draft, PWA install. **No Play Store APK.** See [CODEX_HANDOFF.md](CODEX_HANDOFF.md) for launch order (website → PWA → APK).
 
 **How do I run it on my PC?**  
 See [LAUNCH.md](LAUNCH.md). Short version: `docker compose up --build` then open `http://localhost:3000`. Local OTP is `123456`.
