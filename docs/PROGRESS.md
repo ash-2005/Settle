@@ -22,7 +22,7 @@ PWA manifest, service worker, home-screen install. LAUNCH.md updated (run + shar
 
 ## S27 — 2026-09-18
 
-Codex handoff doc, PROJECT_STATUS + README sync (AI draft + PWA). V1 complete on GitHub.
+PROJECT_STATUS + README sync (AI draft + PWA). V1 complete on GitHub.
 
 ## Local V1 — 2026-08-21
 

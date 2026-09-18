@@ -29,7 +29,7 @@ Modular monolith. Browser → Next.js → Spring Boot → PostgreSQL. No LLM on 
 2. **PWA** — already works once site is public
 3. **APK later** — Capacitor/TWA + Android Studio; must point at public API, not localhost
 
-See [CODEX_HANDOFF.md](CODEX_HANDOFF.md) and [LAUNCH.md](LAUNCH.md).
+See [LAUNCH.md](LAUNCH.md).
 
 ## Tests
 

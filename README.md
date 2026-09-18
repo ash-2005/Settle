@@ -74,10 +74,6 @@ docker run --rm -v "${PWD}/backend:/app" -w /app maven:3.9.9-eclipse-temurin-21 
 
 Covers money rounding, split math, settlement planner, and AI expense draft parser.
 
-## Codex / next agent
-
-Full handoff for **website first, then app**: [docs/CODEX_HANDOFF.md](docs/CODEX_HANDOFF.md)
-
 ## Environment
 
 See [.env.example](.env.example). Do not commit `.env`. Local JWT secret is a dummy string for Docker.
