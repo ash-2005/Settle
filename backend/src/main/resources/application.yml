@@ -2,7 +2,7 @@ spring:
   application:
     name: settle-api
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/settle}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:settle}}
     username: ${SPRING_DATASOURCE_USERNAME:settle}
     password: ${SPRING_DATASOURCE_PASSWORD:settle}
   jpa:
@@ -17,7 +17,7 @@ spring:
     enabled: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 settle:
   jwt-secret: ${JWT_SECRET:local-dev-only-change-me-32chars!!}

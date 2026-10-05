@@ -1,26 +1,34 @@
 # Deploy Settle (website first, then Android app)
 
-## 1. Website (one HTTPS URL)
+No Docker on your side. The host builds everything from GitHub.
 
-You need a VPS (or any Docker host) and a domain with an A record pointing at it.
+## 1. Website on Render (free tier)
 
-```bash
-git clone https://github.com/ash-2005/Settle && cd Settle
-cp .env.example .env     # set SETTLE_DOMAIN, POSTGRES_PASSWORD, JWT_SECRET (32+ random chars), SETTLE_OTP
-docker compose -f docker-compose.prod.yml up -d --build
-```
+1. Push this repo to GitHub (done) and sign in at https://render.com with GitHub.
+2. **New > Blueprint**, pick `ash-2005/Settle`. Render reads `render.yaml` and creates the database, the API (`settle-api`) and the website (`settle-web`).
+3. It asks for two values:
+   - `SETTLE_OTP`: the login code your friends will type. Pick your own, not `123456`.
+   - `API_INTERNAL_URL`: leave blank for now.
+4. When `settle-api` is live, copy its URL (looks like `https://settle-api-xxxx.onrender.com`), open `settle-web` > Environment, set `API_INTERNAL_URL` to it and redeploy the web service. The site bakes this in at build, so it needs that redeploy.
+5. Send friends the `settle-web` URL.
 
-Caddy gets the HTTPS certificate automatically. The browser talks to `/api` on the same origin; Next forwards it to the Spring API, so there is no CORS or `NEXT_PUBLIC_API_URL` juggling.
+Check: `<settle-api url>/api/health` returns `{"status":"ok"}`.
 
-**OTP warning.** There is no SMS provider yet. Login accepts the single code in `SETTLE_OTP` for any phone number, so anyone who finds the URL can sign in as any number. That is fine for a private demo among friends only. Before a real public launch, put an SMS provider (MSG91/Twilio) behind `/api/auth/otp/*`.
+Free tier notes: the services sleep after ~15 minutes idle (first load takes about a minute), and the free Postgres is deleted after 30 days. Upgrade the database before you keep real data.
 
-## 2. Android app (after the website is live)
+**Login warning.** There is no SMS provider yet. The code in `SETTLE_OTP` works for any phone number, so only share the link with people you trust. Add an SMS provider (MSG91/Twilio) before a public launch.
 
-This needs Android Studio (not available on every machine).
+## 2. Android app (after the website works)
 
-1. `npm i @capacitor/core @capacitor/cli @capacitor/android` in `frontend/`
+Needs Android Studio (not available in the cloud session).
+
+1. In `frontend/`: `npm i @capacitor/core @capacitor/cli @capacitor/android`
 2. `npx cap init Settle app.settle.android --web-dir=public`
-3. In `capacitor.config.ts` set `server: { url: "https://<your domain>" }` so the app shell loads the live site.
+3. In `capacitor.config.ts` set `server: { url: "https://<settle-web url>" }` so the app loads the live site.
 4. `npx cap add android && npx cap open android`, then Build > Generate Signed APK/AAB.
 
-Until then the PWA works: open the site in Chrome, menu > Add to Home screen.
+Until then: open the site in Chrome > menu > Add to Home screen (the PWA).
+
+## Alternative: your own server
+
+`docker-compose.prod.yml` runs everything behind Caddy HTTPS on any VPS. See the comments at the top of that file.
