@@ -2,7 +2,7 @@ const TOKEN_KEY = "settle.access";
 const REFRESH_KEY = "settle.refresh";
 
 export function apiUrl() {
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 }
 
 export function getToken() {

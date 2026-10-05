@@ -1,0 +1,60 @@
+# Public deploy: one HTTPS URL. Usage:
+#   cp .env.example .env   (set SETTLE_DOMAIN, JWT_SECRET, POSTGRES_PASSWORD)
+#   docker compose -f docker-compose.prod.yml up -d --build
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: settle
+      POSTGRES_USER: settle
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - settle_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U settle"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/settle
+      SPRING_DATASOURCE_USERNAME: settle
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (32+ chars)}
+      SETTLE_OTP: ${SETTLE_OTP:?set SETTLE_OTP (demo code, see docs/DEPLOY.md)}
+      CORS_ORIGINS: https://${SETTLE_DOMAIN}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ""
+    environment:
+      API_INTERNAL_URL: http://api:8080
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    command: caddy reverse-proxy --from ${SETTLE_DOMAIN} --to web:3000
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  settle_pg:
+  caddy_data:
