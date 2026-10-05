@@ -53,3 +53,12 @@ Plan items: `{ fromPersonId, toPersonId, amount }`. Copy in clients: optimized p
 
 - `GET /api/groups/{id}/activity`
 - `GET /api/activity`
+
+## Settlement payments
+
+- `POST /api/groups/{id}/payments` `{ toPersonId, amount }` — payer (caller) records "I paid". Status `PENDING`; does not change balances yet.
+- `GET /api/groups/{id}/payments` — group members only.
+- `POST /api/payments/{id}/confirm` — recipient only. `CONFIRMED` payments reduce the payer's debt and the recipient's credit. Expenses are never rewritten.
+- `POST /api/payments/{id}/reject` — recipient only. Balances stay open.
+
+Anyone other than the recipient gets 404. A payment can be resolved once.

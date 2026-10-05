@@ -7,6 +7,7 @@ import com.settle.expenses.ExpensePayerRepository;
 import com.settle.expenses.ExpenseRepository;
 import com.settle.groups.GroupMember;
 import com.settle.groups.GroupService;
+import com.settle.payments.PaymentService;
 import com.settle.people.PeopleService;
 import com.settle.people.Person;
 import com.settle.settlements.SettlementPlanner;
@@ -27,18 +28,21 @@ public class BalanceService {
     private final ExpenseParticipantRepository participants;
     private final GroupService groups;
     private final PeopleService people;
+    private final PaymentService payments;
 
     public BalanceService(
             ExpenseRepository expenses,
             ExpensePayerRepository payers,
             ExpenseParticipantRepository participants,
             GroupService groups,
-            PeopleService people) {
+            PeopleService people,
+            PaymentService payments) {
         this.expenses = expenses;
         this.payers = payers;
         this.participants = participants;
         this.groups = groups;
         this.people = people;
+        this.payments = payments;
     }
 
     public Map<String, Object> groupBalances(UUID userId, UUID groupId) {
@@ -82,6 +86,7 @@ public class BalanceService {
         for (Expense e : expenses.findByGroupIdAndStatusOrderByCreatedAtDesc(groupId, "ACTIVE")) {
             applyExpense(e.getId(), nets);
         }
+        payments.applyConfirmed(groupId, nets);
         return nets;
     }
 
@@ -107,7 +112,7 @@ public class BalanceService {
                 }
             });
         }
-        return nets.getOrDefault(personId, Money.fromPaise(0));
+        return nets.getOrDefault(personId, Money.fromPaise(0)).add(payments.confirmedAdjustment(personId));
     }
 
     public List<Map<String, Object>> whyIOwe(UUID personId, UUID groupId) {

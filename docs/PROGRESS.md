@@ -6,6 +6,14 @@ Author on GitHub: **Ashmit** (`ashmitg25@gmail.com`). No Cursor co-author.
 
 ---
 
+## S28 — 2026-10-05
+
+Settlement payments: payer marks paid, recipient confirms/rejects, confirmed payments reduce balances. Settle tab has "I paid this" and "Got it". One-URL prod compose + DEPLOY.md.
+
+**Tests:** live API check (pending keeps plan, confirm clears it, non-recipient 404, double confirm 400); `mvn test`, `npm run build`.
+
+---
+
 ## S25 — 2026-08-26
 
 AI expense draft: `/api/ai/expense-draft`, Java parser (+ optional Gemini), speak/type on Add expense. User must confirm before save.
