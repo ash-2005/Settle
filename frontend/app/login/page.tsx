@@ -58,10 +58,10 @@ export default function LoginPage() {
         </form>
       ) : (
         <form onSubmit={verify} className="mt-8 space-y-3">
-          <p className="text-sm text-zinc-600">Local OTP is always 123456. Nothing is SMSed.</p>
+          <p className="text-sm text-zinc-600">Enter the login code you were given. No SMS is sent yet.</p>
           <label className="block text-sm">
             Your name
-            <input className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-3" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ashmit" />
+            <input className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-3" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ashmit" required maxLength={60} />
           </label>
           <label className="block text-sm">
             Code

@@ -53,3 +53,25 @@ Plan items: `{ fromPersonId, toPersonId, amount }`. Copy in clients: optimized p
 
 - `GET /api/groups/{id}/activity`
 - `GET /api/activity`
+
+## Settlement payments
+
+- `POST /api/groups/{id}/payments` `{ toPersonId, amount }` — payer (caller) records "I paid". Status `PENDING`; does not change balances yet.
+- `GET /api/groups/{id}/payments` — group members only.
+- `POST /api/payments/{id}/confirm` — recipient only. `CONFIRMED` payments reduce the payer's debt and the recipient's credit. Expenses are never rewritten.
+- `POST /api/payments/{id}/reject` — recipient only. Balances stay open.
+
+Anyone other than the recipient gets 404. A payment can be resolved once.
+
+## Editing and profile
+
+- `PATCH /api/expenses/{id}` — same body as create (groupId is fixed). Creator or any affected person (payer or share holder); others get 404. Replaces payers and shares, then writes `EXPENSE_EDITED` with before/after amount and per-person share. Audience: affected people, plus the creator when someone else edits; the editor is skipped.
+- `PATCH /api/me` `{ displayName }` — renames the account and the person row everyone sees.
+
+CORS defaults to `*` (auth is a bearer token, not a cookie). Set `CORS_ORIGINS` to a comma list to restrict it.
+
+## Friends (pairwise balances)
+
+- `GET /api/friends` — everyone you share an ACTIVE expense with, with `net` (positive = they owe you). Derived: on each expense X owes payer Y `share_X * paid_Y / amount`, then confirmed payments between the two are applied. This is a per-person view; the group Settle tab still uses group net balances.
+- `GET /api/friends/{personId}` — one friend plus pending payments between you.
+- `POST /api/payments` `{ toPersonId, amount, groupId? }` — record "I paid" outside a group (needs a shared expense). `GET /api/payments/incoming` lists payments waiting for you to confirm.

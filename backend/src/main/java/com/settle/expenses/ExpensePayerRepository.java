@@ -5,6 +5,8 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ExpensePayerRepository extends JpaRepository<ExpensePayer, ExpensePayer.PK> {
+    void deleteByExpenseId(UUID expenseId);
+
     List<ExpensePayer> findByExpenseId(UUID expenseId);
 
     List<ExpensePayer> findByPersonId(UUID personId);

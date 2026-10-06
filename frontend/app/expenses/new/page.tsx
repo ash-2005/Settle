@@ -6,12 +6,23 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 type Person = { id: string; displayName: string };
+type Method = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
+type ExpenseView = {
+  groupId: string | null;
+  description: string;
+  amount: string;
+  splitMethod: string;
+  payers: { person: Person; amount: string }[];
+  participants: { person: Person; shareAmount: string }[];
+};
 type Group = { id: string; name: string; members: { person: Person; status: string }[] };
 
 function NewExpenseForm() {
   const router = useRouter();
   const params = useSearchParams();
   const presetGroup = params.get("groupId") || "";
+  const editId = params.get("edit") || "";
+  const withId = params.get("with") || "";
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [groupId, setGroupId] = useState(presetGroup);
   const [group, setGroup] = useState<Group | null>(null);
@@ -26,6 +37,10 @@ function NewExpenseForm() {
   const [aiText, setAiText] = useState("");
   const [aiNote, setAiNote] = useState("");
   const [listening, setListening] = useState(false);
+  const [splitMethod, setSplitMethod] = useState<Method>("EQUAL");
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [multiPayer, setMultiPayer] = useState(false);
+  const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     api("/api/me").then((u) => {
@@ -37,16 +52,49 @@ function NewExpenseForm() {
   }, []);
 
   useEffect(() => {
+    if (!withId || editId) return;
+    api(`/api/friends/${withId}`).then((f: { person: Person }) => {
+      setExtraPeople([f.person]);
+      setSelected((prev) => Array.from(new Set([...prev, f.person.id])));
+    });
+  }, [withId, editId]);
+
+  useEffect(() => {
+    if (!editId) return;
+    api(`/api/expenses/${editId}`).then((x: ExpenseView) => {
+      setGroupId(x.groupId || "");
+      setAmount(x.amount);
+      setDescription(x.description);
+      setSelected(x.participants.map((p) => p.person.id));
+      setExtraPeople(x.participants.map((p) => p.person));
+      if (x.splitMethod === "EQUAL") {
+        setSplitMethod("EQUAL");
+      } else {
+        // Percent and shares were turned into exact amounts when saved; edit them as exact.
+        setSplitMethod("EXACT");
+        setValues(Object.fromEntries(x.participants.map((p) => [p.person.id, p.shareAmount])));
+      }
+      if (x.payers.length > 1) {
+        setMultiPayer(true);
+        setPayerAmounts(Object.fromEntries(x.payers.map((p) => [p.person.id, p.amount])));
+      } else if (x.payers[0]) {
+        setPayerId(x.payers[0].person.id);
+      }
+    });
+  }, [editId]);
+
+  useEffect(() => {
     if (!groupId) {
       setGroup(null);
       return;
     }
     api(`/api/groups/${groupId}`).then((g: Group) => {
       setGroup(g);
-      const active = g.members.filter((m) => m.status === "ACTIVE").map((m) => m.person.id);
-      setSelected(active);
+      if (!editId) {
+        setSelected(g.members.filter((m) => m.status === "ACTIVE").map((m) => m.person.id));
+      }
     });
-  }, [groupId]);
+  }, [groupId, editId]);
 
   const people: Person[] = group
     ? group.members.filter((m) => m.status === "ACTIVE").map((m) => m.person)
@@ -108,22 +156,53 @@ function NewExpenseForm() {
     onend: (() => void) | null;
   };
 
+  function sumOf(ids: string[], vals: Record<string, string>) {
+    // Whole paise, so the check never depends on float rounding.
+    return ids.reduce((t, id) => t + Math.round(parseFloat(vals[id] || "0") * 100), 0);
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    const body: Record<string, unknown> = {
+      amount,
+      description,
+      participantIds: selected,
+      splitMethod,
+    };
+    if (!editId) body.groupId = groupId || null;
+    const total = Math.round(parseFloat(amount || "0") * 100);
+    if (multiPayer) {
+      const ids = people.map((p) => p.id).filter((id) => parseFloat(payerAmounts[id] || "0") > 0);
+      if (sumOf(ids, payerAmounts) !== total) {
+        setError("Amounts paid must add up to the expense total.");
+        return;
+      }
+      body.payers = ids.map((id) => ({ personId: id, amount: payerAmounts[id] }));
+    } else {
+      body.payers = [{ personId: payerId, amount }];
+    }
+    if (splitMethod === "EXACT") {
+      if (sumOf(selected, values) !== total) {
+        setError("Shares must add up to the expense total.");
+        return;
+      }
+      body.exactAmounts = Object.fromEntries(selected.map((id) => [id, values[id] || "0"]));
+    } else if (splitMethod === "PERCENTAGE") {
+      if (sumOf(selected, values) !== 10000) {
+        setError("Percentages must add up to 100.");
+        return;
+      }
+      body.percentages = Object.fromEntries(selected.map((id) => [id, values[id] || "0"]));
+    } else if (splitMethod === "SHARES") {
+      body.shareCounts = Object.fromEntries(selected.map((id) => [id, parseInt(values[id] || "1", 10) || 1]));
+    }
     try {
-      const created = await api("/api/expenses", {
-        method: "POST",
-        body: JSON.stringify({
-          amount,
-          description,
-          groupId: groupId || null,
-          participantIds: selected,
-          payers: [{ personId: payerId, amount }],
-          splitMethod: "EQUAL",
-        }),
+      const saved = await api(editId ? `/api/expenses/${editId}` : "/api/expenses", {
+        method: editId ? "PATCH" : "POST",
+        body: JSON.stringify(body),
       });
-      router.push(`/expenses/${created.id}`);
+      router.push(`/expenses/${saved.id}`);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -131,7 +210,8 @@ function NewExpenseForm() {
 
   return (
     <Shell>
-      <h1 className="text-2xl font-semibold">Add expense</h1>
+      <h1 className="text-2xl font-semibold">{editId ? "Edit expense" : "Add expense"}</h1>
+      {!editId && (
       <div className="mt-4 space-y-2 rounded-2xl bg-white p-4">
         <p className="text-sm font-medium">Type or speak — then review</p>
         <textarea className="w-full rounded-xl border px-3 py-2 text-sm" rows={3} placeholder='I paid 1850 for groceries split between me and Rahul' value={aiText} onChange={(e) => setAiText(e.target.value)} />
@@ -145,8 +225,9 @@ function NewExpenseForm() {
         </div>
         {aiNote && <p className="text-xs text-zinc-500">{aiNote}</p>}
       </div>
+      )}
       <form onSubmit={submit} className="mt-4 space-y-3">
-        <select className="w-full rounded-xl border bg-white px-3 py-3" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+        <select disabled={!!editId} className="w-full rounded-xl border bg-white px-3 py-3 disabled:opacity-60" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
           <option value="">No group — just these people</option>
           {groups.map((g) => (
             <option key={g.id} value={g.id}>
@@ -156,16 +237,33 @@ function NewExpenseForm() {
         </select>
         <input className="w-full rounded-xl border bg-white px-3 py-3 text-2xl" placeholder="₹ amount" value={amount} onChange={(e) => setAmount(e.target.value)} required inputMode="decimal" />
         <input className="w-full rounded-xl border bg-white px-3 py-3" placeholder="What for?" value={description} onChange={(e) => setDescription(e.target.value)} required />
-        <label className="block text-sm">
-          Paid by
-          <select className="mt-1 w-full rounded-xl border bg-white px-3 py-2" value={payerId} onChange={(e) => setPayerId(e.target.value)}>
-            {people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="text-sm">
+          <div className="flex items-center justify-between">
+            <span>Paid by</span>
+            <button type="button" className="text-zinc-500 underline" onClick={() => setMultiPayer(!multiPayer)}>
+              {multiPayer ? "One person paid" : "Multiple people paid"}
+            </button>
+          </div>
+          {!multiPayer && (
+            <select className="mt-1 w-full rounded-xl border bg-white px-3 py-2" value={payerId} onChange={(e) => setPayerId(e.target.value)}>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.displayName}
+                </option>
+              ))}
+            </select>
+          )}
+          {multiPayer && (
+            <div className="mt-2 space-y-2">
+              {people.map((p) => (
+                <div key={p.id} className="flex items-center gap-2">
+                  <span className="flex-1">{p.displayName}</span>
+                  <input className="w-28 rounded-xl border bg-white px-3 py-2 text-right" inputMode="decimal" placeholder="0" value={payerAmounts[p.id] || ""} onChange={(e) => setPayerAmounts({ ...payerAmounts, [p.id]: e.target.value })} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div>
           <p className="text-sm font-medium">Participants</p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -184,8 +282,28 @@ function NewExpenseForm() {
             </button>
           </div>
         )}
-        <p className="text-sm text-zinc-500">Split equally. Exact / percent / shares are on the API for tests and later UI.</p>
-        <button className="w-full rounded-xl bg-zinc-900 py-3 text-white">Add expense</button>
+        <div>
+          <p className="text-sm font-medium">Split</p>
+          <div className="mt-2 grid grid-cols-4 gap-1 rounded-xl bg-zinc-200 p-1 text-sm">
+            {([["EQUAL", "Equally"], ["EXACT", "₹ Exact"], ["PERCENTAGE", "%"], ["SHARES", "Shares"]] as [Method, string][]).map(([m, label]) => (
+              <button type="button" key={m} onClick={() => setSplitMethod(m)} className={`rounded-lg py-1.5 ${splitMethod === m ? "bg-white font-medium" : ""}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {splitMethod !== "EQUAL" && (
+            <div className="mt-3 space-y-2">
+              {people.filter((p) => selected.includes(p.id)).map((p) => (
+                <div key={p.id} className="flex items-center gap-2 text-sm">
+                  <span className="flex-1">{p.displayName}</span>
+                  <input className="w-28 rounded-xl border bg-white px-3 py-2 text-right" inputMode="decimal" placeholder={splitMethod === "SHARES" ? "1" : "0"} value={values[p.id] || ""} onChange={(e) => setValues({ ...values, [p.id]: e.target.value })} />
+                  <span className="w-4 text-zinc-500">{splitMethod === "PERCENTAGE" ? "%" : splitMethod === "SHARES" ? "×" : "₹"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button className="w-full rounded-xl bg-zinc-900 py-3 text-white">{editId ? "Save changes" : "Add expense"}</button>
       </form>
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
     </Shell>

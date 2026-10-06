@@ -10,7 +10,8 @@ type Person = { id: string; displayName: string; pending: boolean; phone: string
 type Member = { person: Person; role: string; status: string };
 type Group = { id: string; name: string; members: Member[] };
 type Expense = { id: string; description: string; amount: string };
-type Balances = { yourNet: string; members: { person: Person; net: string }[]; why: { expenseId: string; description: string; delta: string }[] };
+type Payment = { id: string; from: Person; to: Person; amount: string; status: string };
+type Balances = { you: Person; yourNet: string; members: { person: Person; net: string }[]; why: { expenseId: string; description: string; delta: string }[] };
 type Plan = { note: string; transfers: { from: Person; to: Person; amount: string }[] };
 
 export default function GroupDetailPage() {
@@ -20,6 +21,7 @@ export default function GroupDetailPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [balances, setBalances] = useState<Balances | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [phone, setPhone] = useState("");
   const [personName, setPersonName] = useState("");
   const [error, setError] = useState("");
@@ -30,6 +32,17 @@ export default function GroupDetailPage() {
     setExpenses(await api(`/api/groups/${id}/expenses`));
     setBalances(await api(`/api/groups/${id}/balances`));
     setPlan(await api(`/api/groups/${id}/settlement-plan`));
+    setPayments(await api(`/api/groups/${id}/payments`));
+  }
+
+  async function payAction(path: string, body?: object) {
+    setError("");
+    try {
+      await api(path, { method: "POST", body: body ? JSON.stringify(body) : undefined });
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
   }
 
   useEffect(() => {
@@ -150,6 +163,33 @@ export default function GroupDetailPage() {
                 {t.from.displayName} → {t.to.displayName}
               </p>
               <p className="text-zinc-600">{inr(t.amount)}</p>
+              {balances && t.from.id === balances.you.id && (
+                <button
+                  className="mt-2 rounded-xl bg-zinc-900 px-3 py-1.5 text-sm text-white"
+                  onClick={() => payAction(`/api/groups/${id}/payments`, { toPersonId: t.to.id, amount: t.amount })}
+                >
+                  I paid this
+                </button>
+              )}
+            </div>
+          ))}
+          {payments.length > 0 && <h3 className="pt-2 text-sm font-semibold text-zinc-500">Payments</h3>}
+          {payments.map((p) => (
+            <div key={p.id} className="rounded-2xl bg-white px-4 py-3">
+              <p className="font-medium">
+                {p.from.displayName} paid {p.to.displayName} {inr(p.amount)}
+              </p>
+              <p className="text-sm text-zinc-500">{p.status === "PENDING" ? "Waiting for the recipient to confirm" : p.status.toLowerCase()}</p>
+              {p.status === "PENDING" && balances && p.to.id === balances.you.id && (
+                <div className="mt-2 flex gap-2">
+                  <button className="rounded-xl bg-zinc-900 px-3 py-1.5 text-sm text-white" onClick={() => payAction(`/api/payments/${p.id}/confirm`)}>
+                    Got it
+                  </button>
+                  <button className="rounded-xl bg-zinc-200 px-3 py-1.5 text-sm" onClick={() => payAction(`/api/payments/${p.id}/reject`)}>
+                    Not received
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

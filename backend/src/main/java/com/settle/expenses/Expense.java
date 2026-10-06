@@ -70,6 +70,16 @@ public class Expense {
         return e;
     }
 
+    public void update(String description, BigDecimal amount, String splitMethod, LocalDate date) {
+        this.description = description;
+        this.amount = amount;
+        this.splitMethod = splitMethod;
+        if (date != null) {
+            this.expenseDate = date;
+        }
+        this.updatedAt = Instant.now();
+    }
+
     public void softDelete() {
         this.status = "DELETED";
         this.updatedAt = Instant.now();

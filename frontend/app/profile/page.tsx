@@ -9,9 +9,29 @@ export default function ProfilePage() {
   const router = useRouter();
   const [me, setMe] = useState<{ displayName: string; username: string; phone: string } | null>(null);
 
+  const [name, setName] = useState("");
+  const [msg, setMsg] = useState("");
+
   useEffect(() => {
-    api("/api/me").then(setMe).catch(() => router.replace("/login"));
+    api("/api/me")
+      .then((u) => {
+        setMe(u);
+        setName(u.displayName);
+      })
+      .catch(() => router.replace("/login"));
   }, [router]);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg("");
+    try {
+      await api("/api/me", { method: "PATCH", body: JSON.stringify({ displayName: name }) });
+      setMe(me && { ...me, displayName: name.trim() });
+      setMsg("Saved. Friends will see this name.");
+    } catch (err) {
+      setMsg((err as Error).message);
+    }
+  }
 
   return (
     <Shell>
@@ -23,7 +43,15 @@ export default function ProfilePage() {
           <p className="mt-2 text-zinc-500">{me.phone}</p>
         </div>
       )}
-      <p className="mt-4 text-sm text-zinc-500">Local OTP is 123456. This is a student project, not a bank.</p>
+      <form onSubmit={save} className="mt-4 space-y-2">
+        <label className="block text-sm">
+          Your name (shown to friends)
+          <input className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required />
+        </label>
+        <button className="w-full rounded-xl bg-zinc-900 py-2 text-white">Save name</button>
+        {msg && <p className="text-sm text-zinc-600">{msg}</p>}
+      </form>
+      <p className="mt-4 text-sm text-zinc-500">A student project, not a bank. Settle does not move money; it only tracks who owes whom.</p>
       <button
         className="mt-6 w-full rounded-xl border border-zinc-300 py-2"
         onClick={() => {

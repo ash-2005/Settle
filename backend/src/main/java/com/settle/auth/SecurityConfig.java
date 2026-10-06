@@ -51,10 +51,18 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(Arrays.stream(corsOrigins.split(",")).map(String::trim).toList());
+        List<String> origins = Arrays.stream(corsOrigins.split(",")).map(String::trim).toList();
+        // Auth is a bearer token in a header, never a cookie, so "*" does not expose sessions.
+        // The deployed site also calls /api on its own origin through a proxy.
+        if (origins.contains("*")) {
+            cfg.setAllowedOriginPatterns(List.of("*"));
+            cfg.setAllowCredentials(false);
+        } else {
+            cfg.setAllowedOrigins(origins);
+            cfg.setAllowCredentials(true);
+        }
         cfg.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
-        cfg.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
         return source;

@@ -1,0 +1,46 @@
+# One-click deploy: Render dashboard > New > Blueprint > pick this repo.
+# Order of setup is in docs/DEPLOY.md.
+databases:
+  - name: settle-db
+    plan: free
+    databaseName: settle
+    user: settle
+
+services:
+  - type: web
+    name: settle-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DB_HOST
+        fromDatabase: { name: settle-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: settle-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: settle-db, property: database }
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase: { name: settle-db, property: user }
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase: { name: settle-db, property: password }
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SETTLE_OTP
+        sync: false # the login code your friends use; choose your own
+      - key: GEMINI_API_KEY
+        sync: false # optional, leave blank to use the built-in parser
+
+  - type: web
+    name: settle-web
+    runtime: node
+    rootDir: frontend
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: "" # same-origin: the site proxies /api to the API below
+      - key: API_INTERNAL_URL
+        sync: false # public URL of settle-api, e.g. https://settle-api-xxxx.onrender.com
