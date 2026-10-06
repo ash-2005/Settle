@@ -27,7 +27,15 @@ export async function api(path: string, init: RequestInit = {}) {
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const res = await fetch(`${apiUrl()}${path}`, { ...init, headers });
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // An HTML page instead of JSON usually means the free server is still waking up.
+      throw new Error(`Server is not ready (${res.status}). Wait a minute and try again.`);
+    }
+  }
   if (!res.ok) {
     throw new Error(data?.error || `Request failed (${res.status})`);
   }
