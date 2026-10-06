@@ -62,3 +62,10 @@ Plan items: `{ fromPersonId, toPersonId, amount }`. Copy in clients: optimized p
 - `POST /api/payments/{id}/reject` — recipient only. Balances stay open.
 
 Anyone other than the recipient gets 404. A payment can be resolved once.
+
+## Editing and profile
+
+- `PATCH /api/expenses/{id}` — same body as create (groupId is fixed). Creator or any affected person (payer or share holder); others get 404. Replaces payers and shares, then writes `EXPENSE_EDITED` with before/after amount and per-person share. Audience: affected people, plus the creator when someone else edits; the editor is skipped.
+- `PATCH /api/me` `{ displayName }` — renames the account and the person row everyone sees.
+
+CORS defaults to `*` (auth is a bearer token, not a cookie). Set `CORS_ORIGINS` to a comma list to restrict it.

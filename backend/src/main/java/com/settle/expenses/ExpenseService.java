@@ -42,32 +42,32 @@ public class ExpenseService {
         this.activity = activity;
     }
 
-    @Transactional
-    public Map<String, Object> create(UUID userId, CreateExpenseRequest req) {
+    private record Prepared(
+            List<CreateExpenseRequest.PayerIn> payers,
+            String method,
+            List<SplitCalculator.Share> shares,
+            BigDecimal amount,
+            String description) {}
+
+    /** Validates a create/edit request and computes the split. Shared so edits obey the same rules. */
+    private Prepared prepare(UUID userId, Person me, UUID groupId, CreateExpenseRequest req) {
         if (req.description() == null || req.description().isBlank()) {
             throw ApiException.bad("description required");
         }
         Money.requirePositive(req.amount());
-        Person me = people.requireForUser(userId);
-
-        if (req.groupId() != null) {
-            groups.visibleGroup(userId, req.groupId());
-        }
 
         List<CreateExpenseRequest.PayerIn> payerIns = req.payers();
         if (payerIns == null || payerIns.isEmpty()) {
             payerIns = List.of(new CreateExpenseRequest.PayerIn(me.getId(), req.amount()));
         }
         BigDecimal paid = BigDecimal.ZERO;
-        Set<UUID> payerIds = new HashSet<>();
         for (var p : payerIns) {
             Money.requirePositive(p.amount());
             people.require(p.personId());
-            if (req.groupId() != null && !groups.isActiveMember(req.groupId(), p.personId())) {
+            if (groupId != null && !groups.isActiveMember(groupId, p.personId())) {
                 throw ApiException.bad("payer is not an active group member");
             }
             paid = paid.add(Money.of(p.amount()));
-            payerIds.add(p.personId());
         }
         if (paid.compareTo(Money.of(req.amount())) != 0) {
             throw ApiException.bad("payer amounts must sum to the expense");
@@ -79,7 +79,7 @@ public class ExpenseService {
         }
         for (UUID pid : participantIds) {
             people.require(pid);
-            if (req.groupId() != null && !groups.isActiveMember(req.groupId(), pid)) {
+            if (groupId != null && !groups.isActiveMember(groupId, pid)) {
                 throw ApiException.bad("participant is not an active group member");
             }
         }
@@ -88,7 +88,7 @@ public class ExpenseService {
         var shares = SplitCalculator.shares(new CreateExpenseRequest(
                 Money.of(req.amount()),
                 req.description().trim(),
-                req.groupId(),
+                groupId,
                 payerIns,
                 participantIds,
                 method,
@@ -96,24 +96,29 @@ public class ExpenseService {
                 req.percentages(),
                 req.shareCounts(),
                 req.expenseDate()));
+        return new Prepared(payerIns, method, shares, Money.of(req.amount()), req.description().trim());
+    }
+
+    @Transactional
+    public Map<String, Object> create(UUID userId, CreateExpenseRequest req) {
+        Person me = people.requireForUser(userId);
+        if (req.groupId() != null) {
+            groups.visibleGroup(userId, req.groupId());
+        }
+        Prepared prep = prepare(userId, me, req.groupId(), req);
 
         Expense expense = expenses.save(Expense.create(
-                req.groupId(),
-                userId,
-                req.description().trim(),
-                Money.of(req.amount()),
-                method,
-                req.expenseDate()));
-
-        for (var p : payerIns) {
+                req.groupId(), userId, prep.description(), prep.amount(), prep.method(), req.expenseDate()));
+        for (var p : prep.payers()) {
             payers.save(ExpensePayer.of(expense.getId(), p.personId(), Money.of(p.amount())));
         }
-        for (var s : shares) {
+        for (var s : prep.shares()) {
             participants.save(ExpenseParticipant.of(expense.getId(), s.personId(), s.amount()));
         }
 
-        Set<UUID> audience = new HashSet<>(payerIds);
-        shares.forEach(s -> audience.add(s.personId()));
+        Set<UUID> audience = new HashSet<>();
+        prep.payers().forEach(p -> audience.add(p.personId()));
+        prep.shares().forEach(s -> audience.add(s.personId()));
         activity.record(
                 me.getId(),
                 "EXPENSE_ADDED",
@@ -127,6 +132,75 @@ public class ExpenseService {
                 audience);
 
         return view(userId, expense.getId());
+    }
+
+    /**
+     * Edit replaces payers and shares. Who may edit: the creator or anyone affected by the expense.
+     * Audience: the creator edits, affected people hear; someone else edits, affected people and the
+     * creator hear. Uninvolved group members never do. The editor is skipped.
+     */
+    @Transactional
+    public Map<String, Object> edit(UUID userId, UUID expenseId, CreateExpenseRequest req) {
+        Expense e = expenses.findById(expenseId).orElseThrow(ApiException::notFound);
+        assertCanSee(userId, e);
+        if (!"ACTIVE".equals(e.getStatus())) {
+            throw ApiException.bad("expense is " + e.getStatus().toLowerCase() + ", it cannot be edited");
+        }
+        Person me = people.requireForUser(userId);
+        boolean creator = e.getCreatedByUserId().equals(userId);
+        Set<UUID> affectedBefore = audienceOf(e);
+        if (!creator && !affectedBefore.contains(me.getId())) {
+            throw ApiException.notFound();
+        }
+
+        Map<UUID, BigDecimal> before = new LinkedHashMap<>();
+        participants.findByExpenseId(e.getId()).forEach(p -> before.put(p.getPersonId(), p.getShareAmount()));
+        BigDecimal oldAmount = e.getAmount();
+        String oldDescription = e.getDescription();
+
+        Prepared prep = prepare(userId, me, e.getGroupId(), req);
+        payers.deleteByExpenseId(e.getId());
+        participants.deleteByExpenseId(e.getId());
+        payers.flush();
+        for (var p : prep.payers()) {
+            payers.save(ExpensePayer.of(e.getId(), p.personId(), Money.of(p.amount())));
+        }
+        Map<UUID, BigDecimal> after = new LinkedHashMap<>();
+        for (var s : prep.shares()) {
+            participants.save(ExpenseParticipant.of(e.getId(), s.personId(), s.amount()));
+            after.put(s.personId(), s.amount());
+        }
+        e.update(prep.description(), prep.amount(), prep.method(), req.expenseDate());
+        expenses.save(e);
+
+        Map<String, Object> shareChanges = new LinkedHashMap<>();
+        Set<UUID> everyone = new HashSet<>(before.keySet());
+        everyone.addAll(after.keySet());
+        for (UUID pid : everyone) {
+            shareChanges.put(pid.toString(), Map.of(
+                    "from", before.getOrDefault(pid, Money.fromPaise(0)).toPlainString(),
+                    "to", after.getOrDefault(pid, Money.fromPaise(0)).toPlainString()));
+        }
+        Set<UUID> audience = new HashSet<>(affectedBefore);
+        audience.addAll(audienceOf(e));
+        if (!creator) {
+            audience.add(people.requireForUser(e.getCreatedByUserId()).getId());
+        }
+        audience.remove(me.getId());
+        activity.record(
+                me.getId(),
+                "EXPENSE_EDITED",
+                "EXPENSE",
+                e.getId(),
+                "PARTICIPANTS",
+                Map.of(
+                        "description", e.getDescription(),
+                        "oldDescription", oldDescription,
+                        "amount", e.getAmount().toPlainString(),
+                        "oldAmount", oldAmount.toPlainString(),
+                        "shares", shareChanges),
+                audience);
+        return toView(e);
     }
 
     public Map<String, Object> view(UUID userId, UUID expenseId) {

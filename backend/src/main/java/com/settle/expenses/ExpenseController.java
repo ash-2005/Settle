@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +28,11 @@ public class ExpenseController {
     @GetMapping("/api/expenses/{id}")
     public Map<String, Object> one(@PathVariable UUID id) {
         return expenses.view(SecurityConfig.currentUserId(), id);
+    }
+
+    @PatchMapping("/api/expenses/{id}")
+    public Map<String, Object> edit(@PathVariable UUID id, @RequestBody CreateExpenseRequest req) {
+        return expenses.edit(SecurityConfig.currentUserId(), id, req);
     }
 
     @PostMapping("/api/expenses/{id}/delete")

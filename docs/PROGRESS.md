@@ -6,6 +6,14 @@ Author on GitHub: **Ashmit** (`ashmitg25@gmail.com`). No Cursor co-author.
 
 ---
 
+## S29 — 2026-10-06
+
+Split UI (equal / exact / percent / shares), multiple payers, expense edit with before/after activity, readable activity feed, rename in Profile, login no longer prints the OTP. Fixed API 403 for browser requests (CORS default now `*`; the proxy forwards Origin).
+
+**Tests:** Playwright run against local stack, 8 checks pass; live API edit/audience checks.
+
+---
+
 ## S28 — 2026-10-05
 
 Settlement payments: payer marks paid, recipient confirms/rejects, confirmed payments reduce balances. Settle tab has "I paid this" and "Got it". One-URL prod compose + DEPLOY.md.
