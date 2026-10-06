@@ -69,3 +69,9 @@ Anyone other than the recipient gets 404. A payment can be resolved once.
 - `PATCH /api/me` `{ displayName }` — renames the account and the person row everyone sees.
 
 CORS defaults to `*` (auth is a bearer token, not a cookie). Set `CORS_ORIGINS` to a comma list to restrict it.
+
+## Friends (pairwise balances)
+
+- `GET /api/friends` — everyone you share an ACTIVE expense with, with `net` (positive = they owe you). Derived: on each expense X owes payer Y `share_X * paid_Y / amount`, then confirmed payments between the two are applied. This is a per-person view; the group Settle tab still uses group net balances.
+- `GET /api/friends/{personId}` — one friend plus pending payments between you.
+- `POST /api/payments` `{ toPersonId, amount, groupId? }` — record "I paid" outside a group (needs a shared expense). `GET /api/payments/incoming` lists payments waiting for you to confirm.

@@ -16,6 +16,8 @@ public class PaymentController {
 
     public record MarkPaidRequest(UUID toPersonId, BigDecimal amount) {}
 
+    public record DirectPaymentRequest(UUID toPersonId, BigDecimal amount, UUID groupId) {}
+
     private final PaymentService payments;
 
     public PaymentController(PaymentService payments) {
@@ -30,6 +32,16 @@ public class PaymentController {
     @PostMapping("/api/groups/{id}/payments")
     public Map<String, Object> markPaid(@PathVariable UUID id, @RequestBody MarkPaidRequest body) {
         return payments.markPaid(SecurityConfig.currentUserId(), id, body.toPersonId(), body.amount());
+    }
+
+    @PostMapping("/api/payments")
+    public Map<String, Object> markPaidDirect(@RequestBody DirectPaymentRequest body) {
+        return payments.markPaid(SecurityConfig.currentUserId(), body.groupId(), body.toPersonId(), body.amount());
+    }
+
+    @GetMapping("/api/payments/incoming")
+    public List<Map<String, Object>> incoming() {
+        return payments.incoming(SecurityConfig.currentUserId());
     }
 
     @PostMapping("/api/payments/{id}/confirm")

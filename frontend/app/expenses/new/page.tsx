@@ -22,6 +22,7 @@ function NewExpenseForm() {
   const params = useSearchParams();
   const presetGroup = params.get("groupId") || "";
   const editId = params.get("edit") || "";
+  const withId = params.get("with") || "";
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [groupId, setGroupId] = useState(presetGroup);
   const [group, setGroup] = useState<Group | null>(null);
@@ -49,6 +50,14 @@ function NewExpenseForm() {
     });
     api("/api/groups").then(setGroups);
   }, []);
+
+  useEffect(() => {
+    if (!withId || editId) return;
+    api(`/api/friends/${withId}`).then((f: { person: Person }) => {
+      setExtraPeople([f.person]);
+      setSelected((prev) => Array.from(new Set([...prev, f.person.id])));
+    });
+  }, [withId, editId]);
 
   useEffect(() => {
     if (!editId) return;

@@ -36,8 +36,10 @@ public class PaymentService {
 
     @Transactional
     public Map<String, Object> markPaid(UUID userId, UUID groupId, UUID toPersonId, BigDecimal rawAmount) {
-        groups.visibleGroup(userId, groupId);
         Person me = people.requireForUser(userId);
+        if (groupId != null) {
+            groups.visibleGroup(userId, groupId);
+        }
         if (toPersonId == null || rawAmount == null) {
             throw ApiException.bad("toPersonId and amount are required");
         }
@@ -48,11 +50,15 @@ public class PaymentService {
         if (toPersonId.equals(me.getId())) {
             throw ApiException.bad("you cannot pay yourself");
         }
-        Integer inGroup = jdbc.queryForObject(
-                "SELECT count(*) FROM group_members WHERE group_id = ? AND person_id = ?",
-                Integer.class, groupId, toPersonId);
-        if (inGroup == null || inGroup == 0) {
-            throw ApiException.bad("recipient is not in this group");
+        if (groupId != null) {
+            Integer inGroup = jdbc.queryForObject(
+                    "SELECT count(*) FROM group_members WHERE group_id = ? AND person_id = ?",
+                    Integer.class, groupId, toPersonId);
+            if (inGroup == null || inGroup == 0) {
+                throw ApiException.bad("recipient is not in this group");
+            }
+        } else if (!sharesAnExpense(me.getId(), toPersonId)) {
+            throw ApiException.bad("you have no expenses with this person");
         }
         UUID id = UUID.randomUUID();
         jdbc.update(
@@ -60,7 +66,7 @@ public class PaymentService {
                 id, groupId, me.getId(), toPersonId, amount);
         activity.record(
                 me.getId(), "PAYMENT_MARKED", "PAYMENT", id, "PARTICIPANTS",
-                Map.of("amount", amount.toPlainString(), "groupId", groupId.toString()),
+                Map.of("amount", amount.toPlainString(), "groupId", groupId == null ? "" : groupId.toString()),
                 Set.of(toPersonId));
         return view(id);
     }
@@ -86,7 +92,7 @@ public class PaymentService {
                 me.getId(), confirm ? "PAYMENT_CONFIRMED" : "PAYMENT_REJECTED", "PAYMENT", paymentId,
                 "PARTICIPANTS",
                 Map.of("amount", ((BigDecimal) row.get("amount")).toPlainString(),
-                        "groupId", row.get("group_id").toString()),
+                        "groupId", row.get("group_id") == null ? "" : row.get("group_id").toString()),
                 Set.of(from));
         return view(paymentId);
     }
@@ -123,6 +129,51 @@ public class PaymentService {
                 "SELECT COALESCE(SUM(amount), 0) FROM settlement_payments WHERE to_person_id = ? AND status = 'CONFIRMED'",
                 BigDecimal.class, personId);
         return paid.subtract(received);
+    }
+
+    private boolean sharesAnExpense(UUID a, UUID b) {
+        String involved = "(EXISTS (SELECT 1 FROM expense_payers x WHERE x.expense_id = e.id AND x.person_id = ?) "
+                + "OR EXISTS (SELECT 1 FROM expense_participants y WHERE y.expense_id = e.id AND y.person_id = ?))";
+        Integer n = jdbc.queryForObject(
+                "SELECT count(*) FROM expenses e WHERE e.status = 'ACTIVE' AND " + involved + " AND " + involved,
+                Integer.class, a, a, b, b);
+        return n != null && n > 0;
+    }
+
+    /** Payments waiting on this person to confirm, across every group and friend. */
+    public List<Map<String, Object>> incoming(UUID userId) {
+        Person me = people.requireForUser(userId);
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (UUID id : jdbc.queryForList(
+                "SELECT id FROM settlement_payments WHERE to_person_id = ? AND status = 'PENDING' ORDER BY created_at DESC",
+                UUID.class, me.getId())) {
+            out.add(view(id));
+        }
+        return out;
+    }
+
+    /** Confirmed payments between two people, in either direction, from `a`'s point of view (positive = a paid b). */
+    public BigDecimal confirmedBetween(UUID a, UUID b) {
+        BigDecimal aPaid = jdbc.queryForObject(
+                "SELECT COALESCE(SUM(amount), 0) FROM settlement_payments WHERE from_person_id = ? AND to_person_id = ? AND status = 'CONFIRMED'",
+                BigDecimal.class, a, b);
+        BigDecimal bPaid = jdbc.queryForObject(
+                "SELECT COALESCE(SUM(amount), 0) FROM settlement_payments WHERE from_person_id = ? AND to_person_id = ? AND status = 'CONFIRMED'",
+                BigDecimal.class, b, a);
+        return aPaid.subtract(bPaid);
+    }
+
+    public List<Map<String, Object>> betweenPending(UUID userId, UUID otherPersonId) {
+        Person me = people.requireForUser(userId);
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (UUID id : jdbc.queryForList(
+                "SELECT id FROM settlement_payments WHERE status = 'PENDING' AND "
+                        + "((from_person_id = ? AND to_person_id = ?) OR (from_person_id = ? AND to_person_id = ?)) "
+                        + "ORDER BY created_at DESC",
+                UUID.class, me.getId(), otherPersonId, otherPersonId, me.getId())) {
+            out.add(view(id));
+        }
+        return out;
     }
 
     private Map<String, Object> view(UUID id) {

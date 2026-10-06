@@ -6,6 +6,14 @@ Author on GitHub: **Ashmit** (`ashmitg25@gmail.com`). No Cursor co-author.
 
 ---
 
+## S30 — 2026-10-06
+
+Friends tab: pairwise balances across groups and one-off expenses, add friend by phone, settle with a friend outside any group (recipient confirms). Payments table allows null group.
+
+**Tests:** live API (pairwise math, stranger rejected, confirm clears), Playwright run of the friend settle flow.
+
+---
+
 ## S29 — 2026-10-06
 
 Split UI (equal / exact / percent / shares), multiple payers, expense edit with before/after activity, readable activity feed, rename in Profile, login no longer prints the OTP. Fixed API 403 for browser requests (CORS default now `*`; the proxy forwards Origin).
